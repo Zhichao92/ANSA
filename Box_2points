@@ -1,0 +1,36 @@
+import ansa 
+from ansa import constants
+from ansa import base
+deck = constants.NASTRAN
+
+def box_2points():
+	new_entites = base.CollectNewModelEntities()
+	points = base.PickEntities(deck, ('POINT',))
+	vals=('X','Y','Z')
+	coordinates = []
+	for point in points:
+		ret = base.GetEntityCardValues(deck, point, vals)
+		coordinates.append((ret['X'], ret['Y'], ret['Z']))
+
+	ent = base.CreateCurveWithBox(coordinates)
+	box_center = base.Cog(ent[0])
+	bbox = base.BoundBox(ent)	
+	point1 = [box_center[0], box_center[1], box_center[2]]
+	point2 = [bbox[0], point1[1], point1[2]]
+	point3 = [point1[0], bbox[1], point1[2]]
+	dim_x = bbox[3] - bbox[0]
+	dim_y = bbox[4] - bbox[1]
+	dim_z = bbox[5] - bbox[2]
+	part = base.CreateEntity(deck, 'ANSAPART',{'Name':'box_'+str(points[0]._id)+'_'+str(points[1]._id)})
+	print(part)
+	property = base.CreateEntity(deck, 'PSHELL', {'Name':'box_'+str(points[0]._id)+'_'+str(points[1]._id)})
+	created_box = base.CreateVolumeBox(point1, point2, point3, dim_x, dim_y, dim_z, part, property)
+	base.RedrawAll()
+	for i in new_entites.report():		
+		if i._type in [3222, 1302]:
+			base.DeleteEntity(i, True)
+	base.DeleteEntity(ent, True)
+
+
+
+box_2points()
