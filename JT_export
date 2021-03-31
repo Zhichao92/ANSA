@@ -1,0 +1,52 @@
+# PYTHON script
+#Export JT file from ANSA
+#Zhichao Zhao @Aero
+#2021-2-15
+import os
+import ansa
+from ansa import base
+from ansa import utils
+from ansa import constants
+from ansa import session
+
+import glob
+
+
+def save_jt(ansa_dir, name):
+	jt_out  = os.path.join(ansa_dir, "%s.jt" % name)
+	print("writing file to %s" % jt_out)
+	base.SaveFileAsJT(jt_out, 'ALL', 'MILLIMETERS')
+
+
+def main(ansa_args):
+	#open files
+	cwd = os.getcwd()
+	surf_dir = os.path.join(cwd, "constant/triSurface")
+
+	files = glob.glob(os.path.join(surf_dir, "G*.obj*"))
+	for f in files:
+		base.InputWaveFront(f, properties_id = "offset")
+
+	ents = base.CollectEntities(constants.NASTRAN, None,  'PSHELL')
+
+	display_tunnel = 'True' in ansa_args.split(" ")[0]
+	if(display_tunnel):
+		files = glob.glob(os.path.join(surf_dir, "*boxWT*"))
+		wt_geom = os.path.join(surf_dir, files[0])
+		base.InputWaveFront(wt_geom, properties_id = "offset")
+		for e in ents:
+			name = e.get_entity_values(constants.NASTRAN, ('Name',))['Name']
+			if('BBWAL0840_floorTurnTable' in name or 'BBWAL0950_splitterArea' in name or "GEOM" in name or "GOPT" in name or "GWRS" in name):
+				continue
+			else:
+				base.Not(e)
+	new_group = base.NewGroup(ansa_args.split(" ")[-1])
+	groups = base.CollectEntities(constants.NASTRAN, None, 'ANSAGROUP')
+	for g in groups:		
+		base.SetEntityPart(g, new_group)
+
+	save_jt("jt-preview", ansa_args.split(" ")[-1])
+
+
+# if __name__ == '__main__':
+# 	main()
